@@ -222,6 +222,15 @@
             cursor: pointer;
         }
 
+        /* Thao tác vô hiệu hóa thẩm mỹ cao cho tài khoản thường */
+        .filter-select:disabled, .form-group input:disabled, .form-group textarea:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+            background: rgba(15, 23, 42, 0.5) !important;
+            border-color: rgba(255, 255, 255, 0.05);
+            color: #cbd5e1;
+        }
+
         /* Grid Sơ Đồ Phòng */
         .grid {
             display: grid;
@@ -489,7 +498,7 @@
                     <div class="iot-row" style="background: rgba(255,255,255,0.03); padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
                         <div class="iot-info">
                             <p style="color: var(--primary); font-weight: 600;">Trạng thái phòng</p>
-                            <span>Bấm để thay đổi</span>
+                            <span id="status-permission-lbl">Bấm để thay đổi</span>
                         </div>
                         <select id="m-status-select" class="filter-select" onchange="changeRoomStatus()" style="padding: 6px 10px; font-size: 13px; border-color: rgba(255,255,255,0.15);">
                             <option value="Trống">Trống</option>
@@ -550,7 +559,7 @@
                             <label>Ghi chú cư trú</label>
                             <textarea id="res-note" rows="2" style="resize: none;"></textarea>
                         </div>
-                        <button class="save-btn" onclick="saveResidentInfo()">
+                        <button id="btn-save-resident" class="save-btn" onclick="saveResidentInfo()">
                             <i class="fa-solid fa-floppy-disk"></i> Lưu Thông Tin
                         </button>
                     </div>
@@ -576,9 +585,8 @@
 
         let user = null;
         let roomsData = [];
-        let mockRooms = []; // Mảng chứa 100 phòng chạy thử offline
+        let mockRooms = [];
 
-        // Hàm tự sinh 100 phòng mô phỏng sang xịn mịn (Offline Mode)
         function generateMockRooms() {
             let list = [];
             for(let f=1; f<=10; f++) {
@@ -610,7 +618,6 @@
             return list;
         }
 
-        // Khởi tạo dữ liệu mô phỏng ngay khi tải trang
         mockRooms = generateMockRooms();
 
         // 1. ĐĂNG NHẬP VÀ PHÂN QUYỀN TRỰC TIẾP
@@ -633,7 +640,7 @@
 
             document.getElementById('login-container').classList.add('hidden');
             document.getElementById('main-ui').classList.remove('hidden');
-            document.getElementById('user-tag').innerHTML = `<i class="fa-solid fa-circle-user" style="color:var(--primary)"></i> Tài khoản: ${input.toUpperCase()}`;
+            document.getElementById('user-tag').innerHTML = `<i class="fa-solid fa-circle-user" style="color:var(--primary)"></i> Tài khoản: ${input.toUpperCase()} (${user.role === 'admin' ? 'Ban Quản Lý' : 'Cư Dân'})`;
             
             initFloorSelect();
             loadRooms();
@@ -684,7 +691,7 @@
                 const statusClass = isTrong ? 'status-trong' : (isThue ? 'status-thue' : 'status-baotri');
                 
                 const div = document.createElement('div');
-                div.className = `room-card ${statusClass}`;
+                div.className = 'room-card ' + statusClass;
                 div.innerHTML = `
                     <h3>P.${r.id}</h3>
                     <div class="room-type">${r.type}</div>
@@ -707,18 +714,25 @@
             return mockRooms.filter(r => r.floor == floor);
         }
 
-        // 3. XEM CHI TIẾT HỘP THOẠI PHÒNG
+        // 3. XEM CHI TIẾT HỘP THOẠI PHÒNG (ÁP DỤNG PHÂN QUYỀN ADMIN)
         async function openRoom(id) {
             const r = roomsData.find(x => x.id == id);
             if(!r) return;
 
+            const isAdmin = user.role === 'admin';
+
             document.getElementById('m-room-id').innerText = "Quản Lý Chi Tiết - Phòng " + id;
             document.getElementById('m-elec').innerText = r.electricity_usage;
             
+            // Phân quyền đổi trạng thái phòng công khai
             const selectEl = document.getElementById('m-status-select');
             selectEl.value = r.status;
             selectEl.setAttribute('data-room-id', id);
+            selectEl.disabled = !isAdmin; // Khóa nếu không phải admin
+            
+            document.getElementById('status-permission-lbl').innerText = isAdmin ? "Bấm để thay đổi" : "🔒 Chỉ xem quyền quản lý";
 
+            // Công tắc SmartHome (Cư dân có thể tự bật tắt trong phòng của họ)
             document.getElementById('switch-light').checked = r.light_status;
             document.getElementById('txt-light-status').innerText = r.light_status ? "Đang bật" : "Đang tắt";
             document.getElementById('txt-light-status').style.color = r.light_status ? "#0ea5e9" : "#94a3b8";
@@ -727,21 +741,32 @@
             document.getElementById('txt-air-status').innerText = r.air_status ? "Đang bật" : "Đang tắt";
             document.getElementById('txt-air-status').style.color = r.air_status ? "#0ea5e9" : "#94a3b8";
             
-            // Xử lý ẩn/hiện cấu hình cư dân dựa trên trạng thái phòng
+            // Xử lý phân quyền Biểu mẫu cư dân
             const formWrapper = document.getElementById('resident-form-wrapper');
             const emptyMsg = document.getElementById('resident-empty-msg');
+            const saveBtn = document.getElementById('btn-save-resident');
             
+            // Thiết lập trạng thái các ô input theo vai trò
+            document.getElementById('res-fullname').disabled = !isAdmin;
+            document.getElementById('res-phone').disabled = !isAdmin;
+            document.getElementById('res-startdate').disabled = !isAdmin;
+            document.getElementById('res-note').disabled = !isAdmin;
+            
+            if (isAdmin) {
+                saveBtn.classList.remove('hidden');
+            } else {
+                saveBtn.classList.add('hidden'); // Ẩn hoàn toàn nút lưu nếu là user thường
+            }
+
             if (r.status === 'Đang thuê') {
                 formWrapper.classList.remove('hidden');
                 emptyMsg.classList.add('hidden');
                 
-                // Đổ dữ liệu vào các ô input
                 document.getElementById('res-fullname').value = r.resident?.fullname || "";
                 document.getElementById('res-phone').value = r.resident?.phone || "";
                 document.getElementById('res-startdate').value = r.resident?.start_date || "";
                 document.getElementById('res-note').value = r.resident?.note || "";
                 
-                // Đồng bộ từ Supabase nếu có kết nối thật
                 if (_supabase) {
                     try {
                         let { data: res } = await _supabase.from('residents').select('*').eq('room_id', id).maybeSingle();
@@ -759,34 +784,46 @@
                 if (r.status === 'Bảo trì') {
                     emptyMsg.innerHTML = `<span style="color:var(--status-baotri); font-weight:600;"><i class="fa-solid fa-screwdriver-wrench"></i> ĐANG BẢO TRÌ</span><br><span style="font-size:13px; display:inline-block; margin-top:6px;">Phòng đang được sửa chữa nâng cấp thiết bị, không có cư dân lưu trú.</span>`;
                 } else {
-                    emptyMsg.innerHTML = `<span style="color:var(--status-trong); font-weight:600;"><i class="fa-solid fa-circle-check"></i> PHÒNG TRỐNG SẴN SÀNG</span><br><span style="font-size:13px; display:inline-block; margin-top:6px;">Hãy chuyển trạng thái phòng sang <b>"Đang thuê"</b> để bắt đầu điền thông tin cư dân mới dời đến.</span>`;
+                    emptyMsg.innerHTML = `<span style="color:var(--status-trong); font-weight:600;"><i class="fa-solid fa-circle-check"></i> PHÒNG TRỐNG SẴN SÀNG</span><br><span style="font-size:13px; display:inline-block; margin-top:6px;">${isAdmin ? 'Hãy chuyển trạng thái phòng sang <b>"Đang thuê"</b> để bắt đầu điền thông tin cư dân mới.' : 'Phòng trống, hiện chưa gán cư dân cư trú.'}</span>`;
                 }
             }
 
-            // Đổ dữ liệu thiết bị nội thất lên giao diện
+            // Đổ dữ liệu thiết bị nội thất lên giao diện (Chỉ Admin mới có quyền thao tác sửa chữa)
             const furnDiv = document.getElementById('m-furniture');
             furnDiv.innerHTML = "";
             if(r.furniture && Array.isArray(r.furniture)) {
                 r.furniture.forEach((f, index) => {
                     const isGood = f.status === 'Tốt';
+                    
+                    let actionButtonsHtml = "";
+                    if (isAdmin) {
+                        actionButtonsHtml = `
+                        <div class="furn-actions">
+                            <button onclick="updateFurniture(${id}, ${index}, 'Hỏng')"><i class="fa-solid fa-circle-exclamation" style="color:#ef4444"></i> Hỏng</button>
+                            <button onclick="updateFurniture(${id}, ${index}, 'Tốt')"><i class="fa-solid fa-check" style="color:#10b981"></i> Sửa xong</button>
+                        </div>`;
+                    }
+
                     furnDiv.innerHTML += `
                         <div style="padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05)">
                             <div class="furn-item">
                                 <span>${f.name}</span>
                                 <span class="furn-status ${isGood ? 'good' : 'broken'}">${f.status}</span>
                             </div>
-                            <div class="furn-actions">
-                                <button onclick="updateFurniture(${id}, ${index}, 'Hỏng')"><i class="fa-solid fa-circle-exclamation" style="color:#ef4444"></i> Hỏng</button>
-                                <button onclick="updateFurniture(${id}, ${index}, 'Tốt')"><i class="fa-solid fa-check" style="color:#10b981"></i> Sửa xong</button>
-                            </div>
+                            ${actionButtonsHtml}
                         </div>`;
                 });
             }
             document.getElementById('modal').classList.remove('hidden');
         }
 
-        // ĐỔI TRẠNG THÁI PHÒNG
+        // ĐỔI TRẠNG THÁI PHÒNG (BẢO VỆ CHẶN THAO TÁC USER)
         async function changeRoomStatus() {
+            if (user.role !== 'admin') {
+                alert("An toàn: Bạn không có quyền quản trị để thay đổi trạng thái phòng!");
+                return;
+            }
+
             const selectEl = document.getElementById('m-status-select');
             const roomId = selectEl.getAttribute('data-room-id');
             const newStatus = selectEl.value;
@@ -798,7 +835,6 @@
             const mockR = mockRooms.find(x => x.id == roomId);
             if(mockR) mockR.status = newStatus;
 
-            // Khởi tạo dữ liệu cư dân mặc định nếu chuyển sang Đang thuê mà chưa có thông tin
             if (newStatus === 'Đang thuê' && (!r.resident || !r.resident.fullname)) {
                 r.resident = {
                     fullname: "Nguyễn Văn Anh",
@@ -819,8 +855,13 @@
             openRoom(roomId);
         }
 
-        // TÍNH NĂNG MỚI: CẬP NHẬT & LƯU THÔNG TIN CƯ DÂN CHỈNH SỬA TỪ FORM
+        // CẬP NHẬT & LƯU THÔNG TIN CƯ DÂN (BẢO VỆ CHẶN THAO TÁC USER)
         async function saveResidentInfo() {
+            if (user.role !== 'admin') {
+                alert("An toàn: Bạn không có quyền quản trị để thay đổi dữ liệu cư dân!");
+                return;
+            }
+
             const selectEl = document.getElementById('m-status-select');
             const roomId = selectEl.getAttribute('data-room-id');
             const r = roomsData.find(x => x.id == roomId);
@@ -836,14 +877,11 @@
                 return;
             }
 
-            // Cập nhật mảng tạm RAM hiển thị
             r.resident = { fullname: name, phone: phone, start_date: start_date, note: note };
 
-            // Cập nhật bộ nhớ mock toàn cục
             const mockR = mockRooms.find(x => x.id == roomId);
             if(mockR) mockR.resident = {...r.resident};
 
-            // Đồng bộ trực tiếp lên Supabase thật bằng cơ chế Upsert thông minh
             if (_supabase) {
                 try {
                     await _supabase.from('residents').upsert({
@@ -858,7 +896,7 @@
                 }
             }
 
-            alert(`Đã cập nhật thông tin cư dân phòng P.${roomId} thành công!`);
+            alert(`Hệ thống: Đã cập nhật thông tin cư dân phòng P.${roomId} thành công!`);
             openRoom(roomId);
         }
 
@@ -892,6 +930,8 @@
 
         // 5. CẬP NHẬT TÌNH TRẠNG THIẾT BỊ NỘI THẤT
         async function updateFurniture(roomId, furnIndex, newStatus) {
+            if (user.role !== 'admin') return;
+
             const r = roomsData.find(x => x.id == roomId);
             if(!r) return;
 
