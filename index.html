@@ -36,7 +36,7 @@
     <div id="main-ui" class="hidden">
         <header>
             <h1 id="user-tag"><i class="fa-solid fa-building-shield"></i> Xin chào Ban Quản Lý</h1>
-            <button class="logout-btn" onclick="location.reload()"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button>
+            <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button>
         </header>
 
         <div class="stats-grid" id="stats-summary-bar">
@@ -225,7 +225,43 @@
             return list;
         }
 
-        mockRooms = generateMockRooms();
+        // ĐH FIX: Hàm đồng bộ dữ liệu Mock Rooms vào LocalStorage để không bị mất khi F5
+        function saveMockRoomsToStorage() {
+            localStorage.setItem('mini_smart_rooms', JSON.stringify(mockRooms));
+        }
+
+        // ĐH FIX: Khởi tạo dữ liệu từ LocalStorage nếu có, tránh tạo mới ngẫu nhiên lại từ đầu
+        const storedRooms = localStorage.getItem('mini_smart_rooms');
+        if (storedRooms) {
+            mockRooms = JSON.parse(storedRooms);
+        } else {
+            mockRooms = generateMockRooms();
+            saveMockRoomsToStorage();
+        }
+
+        // ĐH FIX: Tự động khôi phục phiên làm việc cũ khi F5 trang web nếu chưa Đăng xuất
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedUser = localStorage.getItem('mini_smart_user');
+            if (savedUser) {
+                user = JSON.parse(savedUser);
+                
+                // Bỏ qua màn hình đăng nhập
+                document.getElementById('login-container').classList.add('hidden');
+                document.getElementById('main-ui').classList.remove('hidden');
+                
+                // Thiết lập giao diện theo phân quyền cũ
+                if (user.role === 'user') {
+                    document.getElementById('floor-filter-wrapper').classList.add('hidden');
+                    document.getElementById('stats-summary-bar').classList.add('hidden');
+                }
+                
+                document.getElementById('user-tag').innerHTML = `<i class="fa-solid fa-circle-user" style="color:var(--primary)"></i> Tài khoản: ${user.username.toUpperCase()} (${user.role === 'admin' ? 'Ban Quản Lý' : 'Cư Dân'})`;
+                
+                initFloorSelect();
+                loadRooms();
+                loadBillingData();
+            }
+        });
 
         async function auth() {
             const input = document.getElementById('user-input').value.trim().toLowerCase();
@@ -237,13 +273,16 @@
             }
 
             if(input === "admin") {
-                user = { role: 'admin' };
+                user = { role: 'admin', username: input };
             } else {
                 const roomId = input.replace('p', '');
-                user = { role: 'user', roomId: roomId };
+                user = { role: 'user', roomId: roomId, username: input };
                 document.getElementById('floor-filter-wrapper').classList.add('hidden');
                 document.getElementById('stats-summary-bar').classList.add('hidden');
             }
+
+            // ĐH FIX: Lưu session đăng nhập vào LocalStorage
+            localStorage.setItem('mini_smart_user', JSON.stringify(user));
 
             document.getElementById('login-container').classList.add('hidden');
             document.getElementById('main-ui').classList.remove('hidden');
@@ -252,6 +291,12 @@
             initFloorSelect();
             loadRooms();
             loadBillingData();
+        }
+
+        // ĐH FIX: Hàm xử lý Đăng xuất chuẩn chỉ - xóa sạch token đăng nhập cũ
+        function logout() {
+            localStorage.removeItem('mini_smart_user');
+            location.reload();
         }
 
         function initFloorSelect() {
@@ -461,6 +506,9 @@
                 if(mockR) mockR.resident = {...r.resident};
             }
 
+            // ĐH FIX: Ghi nhận trạng thái phòng mới vào bộ nhớ trình duyệt
+            saveMockRoomsToStorage();
+
             if (_supabase) {
                 try {
                     await _supabase.from('rooms').update({ status: newStatus }).eq('id', roomId);
@@ -497,6 +545,9 @@
             const mockR = mockRooms.find(x => x.id == roomId);
             if(mockR) mockR.resident = {...r.resident};
 
+            // ĐH FIX: Đồng bộ thông tin cư dân vừa chỉnh sửa thành công vào bộ nhớ trình duyệt
+            saveMockRoomsToStorage();
+
             if (_supabase) {
                 try {
                     await _supabase.from('residents').upsert({
@@ -529,6 +580,9 @@
             const mockR = mockRooms.find(x => x.id == id);
             if(mockR) mockR[field] = newVal;
 
+            // ĐH FIX: Đồng bộ bật/tắt thiết bị SmartHome vào bộ nhớ trình duyệt
+            saveMockRoomsToStorage();
+
             if (_supabase) {
                 try {
                     await _supabase.from('rooms').update({ [field]: newVal }).eq('id', id);
@@ -549,6 +603,9 @@
             r.furniture[furnIndex].status = newStatus;
             const mockR = mockRooms.find(x => x.id == roomId);
             if(mockR) mockR.furniture = r.furniture;
+
+            // ĐH FIX: Đồng bộ trạng thái thiết bị nội thất vào bộ nhớ trình duyệt
+            saveMockRoomsToStorage();
 
             if (_supabase) {
                 try {
