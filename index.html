@@ -435,9 +435,21 @@
             
             <div class="modal-grid">
                 <div class="modal-section">
-                    <h3><i class="fa-solid fa-house-laptop"></i> Smart Home</h3>
+                    <h3><i class="fa-solid fa-sliders"></i> Cấu Hình & SmartHome</h3>
                     
-                    <div class="iot-row">
+                    <div class="iot-row" style="background: rgba(255,255,255,0.03); padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                        <div class="iot-info">
+                            <p style="color: var(--primary); font-weight: 600;">Trạng thái phòng</p>
+                            <span>Bấm để thay đổi</span>
+                        </div>
+                        <select id="m-status-select" class="filter-select" onchange="changeRoomStatus()" style="padding: 6px 10px; font-size: 13px; border-color: rgba(255,255,255,0.15);">
+                            <option value="Trống">Trống</option>
+                            <option value="Đang thuê">Đang thuê</option>
+                            <option value="Bảo trì">Bảo trì</option>
+                        </select>
+                    </div>
+
+                    <div class="iot-row" style="margin-top: 10px;">
                         <div class="iot-info">
                             <p>Hệ thống chiếu sáng</p>
                             <span id="txt-light-status">Đang tắt</span>
@@ -559,7 +571,7 @@
             }
         }
 
-        // 2. TẢI DANH SÁCH SƠ ĐỒ PHÒNG (ƯU TIÊN SUPABASE -> CHUYỂN MOCK NẾU CHƯA KẾT NỐI)
+        // 2. TẢI DANH SÁCH SƠ ĐỒ PHÒNG (UR TIÊN SUPABASE -> CHUYỂN MOCK NẾU CHƯA KẾT NỐI)
         async function loadRooms() {
             const floor = document.getElementById('floor-select').value;
             let data = [];
@@ -626,6 +638,11 @@
             document.getElementById('m-room-id').innerText = "Quản Lý Chi Tiết - Phòng " + id;
             document.getElementById('m-elec').innerText = r.electricity_usage;
             
+            // Gắn mã phòng hiện tại vào thuộc tính của thanh chọn trạng thái
+            const selectEl = document.getElementById('m-status-select');
+            selectEl.value = r.status;
+            selectEl.setAttribute('data-room-id', id);
+
             document.getElementById('switch-light').checked = r.light_status;
             document.getElementById('txt-light-status').innerText = r.light_status ? "Đang bật" : "Đang tắt";
             document.getElementById('txt-light-status').style.color = r.light_status ? "#0ea5e9" : "#94a3b8";
@@ -634,13 +651,13 @@
             document.getElementById('txt-air-status').innerText = r.air_status ? "Đang bật" : "Đang tắt";
             document.getElementById('txt-air-status').style.color = r.air_status ? "#0ea5e9" : "#94a3b8";
             
-            // Xử lý thông tin cư dân
+            // Xử lý thông tin cư dân phụ thuộc trực tiếp vào trạng thái phòng mới
             let tenantName = "Phòng hiện đang trống";
-            let tenantHistory = "";
+            let tenantHistory = "Trạng thái: Sẵn sàng đón cư dân dời đến.";
             
             if (r.status === 'Đang thuê') {
                 tenantName = "Họ tên: Nguyễn Văn Anh<br>SĐT: 0912.345.678";
-                tenantHistory = "📅 Ngày dời đến: 01/01/2026<br>📝 Ghi chú: Sinh viên CNTT, ngoan ngoãn, đóng tiền đúng hạn.";
+                tenantHistory = "📅 Ngày dời đến: 01/01/2026<br>📝 Ghi chú: Sinh viên CNTT, đóng tiền đúng hạn.";
                 
                 if (_supabase) {
                     try {
@@ -651,6 +668,9 @@
                         }
                     } catch(e){}
                 }
+            } else if (r.status === 'Bảo trì') {
+                tenantName = "🛠️ Đang trong diện bảo trì";
+                tenantHistory = "Nội dung: Đang kiểm tra định kỳ hệ thống điện thông minh và nội thất gỗ.";
             }
             
             document.getElementById('m-tenant').innerHTML = tenantName;
@@ -678,6 +698,37 @@
             document.getElementById('modal').classList.remove('hidden');
         }
 
+        // TÍNH NĂNG MỚI: ĐỔI TRẠNG THÁI PHÒNG TRỰC TIẾP TỪ GIAO DIỆN CHI TIẾT
+        async function changeRoomStatus() {
+            const selectEl = document.getElementById('m-status-select');
+            const roomId = selectEl.getAttribute('data-room-id');
+            const newStatus = selectEl.value;
+
+            // 1. Cập nhật ngay trong mảng hiển thị hiện tại (RAM)
+            const r = roomsData.find(x => x.id == roomId);
+            if(!r) return;
+            r.status = newStatus;
+
+            // 2. Cập nhật vào mảng mock chung để lưu trữ trạng thái khi lọc tầng
+            const mockR = mockRooms.find(x => x.id == roomId);
+            if(mockR) mockR.status = newStatus;
+
+            // 3. Đồng bộ lên database nếu có kết nối Supabase thật
+            if (_supabase) {
+                try {
+                    await _supabase.from('rooms').update({ status: newStatus }).eq('id', roomId);
+                } catch(e){
+                    console.error("Lỗi đồng bộ Supabase:", e);
+                }
+            }
+
+            // 4. Vẽ lại sơ đồ phòng ở ngoài Dashboard chính
+            loadRooms();
+            
+            // 5. Làm mới lại thông tin cư dân trong hộp thoại tương ứng trạng thái mới
+            openRoom(roomId);
+        }
+
         // 4. ĐIỀU KHIỂN CÔNG TẮC ĐÈN/MÁY LẠNH SMART HOME
         async function toggleSmart(type) {
             const id = document.getElementById('m-room-id').innerText.replace('Quản Lý Chi Tiết - Phòng ', '');
@@ -690,7 +741,10 @@
             const txtEl = document.getElementById(isLight ? 'txt-light-status' : 'txt-air-status');
             
             const newVal = switchEl.checked;
-            r[field] = newVal; // Cập nhật ngay lập tức vào bộ nhớ RAM chạy thử
+            r[field] = newVal; // Cập nhật ngay bộ nhớ RAM chạy thử
+            
+            const mockR = mockRooms.find(x => x.id == id);
+            if(mockR) mockR[field] = newVal;
 
             if (_supabase) {
                 try {
@@ -709,6 +763,9 @@
             if(!r) return;
 
             r.furniture[furnIndex].status = newStatus;
+            
+            const mockR = mockRooms.find(x => x.id == roomId);
+            if(mockR) mockR.furniture = r.furniture;
 
             if (_supabase) {
                 try {
