@@ -40,19 +40,19 @@
         </header>
 
         <div class="stats-grid" id="stats-summary-bar">
-            <div class="stat-card">
+            <div class="stat-card active" onclick="filterByStatus('Tất cả', this)" style="cursor: pointer;">
                 <div class="stat-icon" style="background: rgba(14, 165, 233, 0.12); color: var(--primary);"><i class="fa-solid fa-building"></i></div>
                 <div class="stat-info"><h4>Tổng Số Phòng</h4><p id="stat-total">100</p></div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" onclick="filterByStatus('Đang thuê', this)" style="cursor: pointer;">
                 <div class="stat-icon" style="background: rgba(59, 130, 246, 0.12); color: var(--status-thue);"><i class="fa-solid fa-user-check"></i></div>
                 <div class="stat-info"><h4>Đang Thuê</h4><p id="stat-occupied">0</p></div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" onclick="filterByStatus('Trống', this)" style="cursor: pointer;">
                 <div class="stat-icon" style="background: rgba(16, 185, 129, 0.12); color: var(--status-trong);"><i class="fa-solid fa-door-open"></i></div>
                 <div class="stat-info"><h4>Phòng Trống</h4><p id="stat-empty">0</p></div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" onclick="filterByStatus('Bảo trì', this)" style="cursor: pointer;">
                 <div class="stat-icon" style="background: rgba(245, 158, 11, 0.12); color: var(--status-baotri);"><i class="fa-solid fa-screwdriver-wrench"></i></div>
                 <div class="stat-info"><h4>Bảo Trì</h4><p id="stat-maintenance">0</p></div>
             </div>
@@ -100,7 +100,7 @@
             
             <div class="modal-grid">
                 <div class="modal-section">
-                    <h3><i class="fa-solid fa-sliders"></i> Cấu Hình & SmartHome</h3>
+                    <h3><i class="fa-solid fa-sliders"></i> Cấu Thiết Bị & SmartHome</h3>
                     
                     <div class="iot-row" style="background: rgba(255,255,255,0.02); padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04);">
                         <div class="iot-info">
@@ -146,9 +146,7 @@
 
                 <div class="modal-section">
                     <h3><i class="fa-solid fa-users"></i> Cư Dân</h3>
-                    
                     <div id="resident-empty-msg" class="hidden" style="font-size: 14px; line-height: 1.6; color: var(--text-muted);"></div>
-                    
                     <div id="resident-form-wrapper" class="hidden">
                         <div class="form-group">
                             <label>Họ và tên</label>
@@ -192,6 +190,9 @@
         let user = null;
         let roomsData = [];
         let mockRooms = [];
+        
+        // ĐÃ THÊM: Biến lưu trữ trạng thái lọc hiện hành từ thanh thống kê
+        let currentStatusFilter = 'Tất cả';
 
         function generateMockRooms() {
             let list = [];
@@ -225,12 +226,10 @@
             return list;
         }
 
-        // ĐH FIX: Hàm đồng bộ dữ liệu Mock Rooms vào LocalStorage để không bị mất khi F5
         function saveMockRoomsToStorage() {
             localStorage.setItem('mini_smart_rooms', JSON.stringify(mockRooms));
         }
 
-        // ĐH FIX: Khởi tạo dữ liệu từ LocalStorage nếu có, tránh tạo mới ngẫu nhiên lại từ đầu
         const storedRooms = localStorage.getItem('mini_smart_rooms');
         if (storedRooms) {
             mockRooms = JSON.parse(storedRooms);
@@ -239,17 +238,13 @@
             saveMockRoomsToStorage();
         }
 
-        // ĐH FIX: Tự động khôi phục phiên làm việc cũ khi F5 trang web nếu chưa Đăng xuất
         window.addEventListener('DOMContentLoaded', () => {
             const savedUser = localStorage.getItem('mini_smart_user');
             if (savedUser) {
                 user = JSON.parse(savedUser);
-                
-                // Bỏ qua màn hình đăng nhập
                 document.getElementById('login-container').classList.add('hidden');
                 document.getElementById('main-ui').classList.remove('hidden');
                 
-                // Thiết lập giao diện theo phân quyền cũ
                 if (user.role === 'user') {
                     document.getElementById('floor-filter-wrapper').classList.add('hidden');
                     document.getElementById('stats-summary-bar').classList.add('hidden');
@@ -281,9 +276,7 @@
                 document.getElementById('stats-summary-bar').classList.add('hidden');
             }
 
-            // ĐH FIX: Lưu session đăng nhập vào LocalStorage
             localStorage.setItem('mini_smart_user', JSON.stringify(user));
-
             document.getElementById('login-container').classList.add('hidden');
             document.getElementById('main-ui').classList.remove('hidden');
             document.getElementById('user-tag').innerHTML = `<i class="fa-solid fa-circle-user" style="color:var(--primary)"></i> Tài khoản: ${input.toUpperCase()} (${user.role === 'admin' ? 'Ban Quản Lý' : 'Cư Dân'})`;
@@ -293,7 +286,6 @@
             loadBillingData();
         }
 
-        // ĐH FIX: Hàm xử lý Đăng xuất chuẩn chỉ - xóa sạch token đăng nhập cũ
         function logout() {
             localStorage.removeItem('mini_smart_user');
             location.reload();
@@ -320,43 +312,58 @@
             document.getElementById('stat-maintenance').innerText = maintenance;
         }
 
+        // ĐH THÊM: Hàm xử lý kích hoạt khi ấn vào thẻ thống kê dữ liệu
+        function filterByStatus(status, element) {
+            if (user.role !== 'admin') return; 
+            
+            currentStatusFilter = status;
+            
+            // Đồng bộ hiệu ứng chọn viền sáng cho Card được click
+            const cards = document.querySelectorAll('#stats-summary-bar .stat-card');
+            cards.forEach(c => c.classList.remove('active'));
+            element.classList.add('active');
+            
+            // Đưa người dùng về màn hình Tab sơ đồ phòng để xem kết quả lọc
+            showTab('rooms');
+            loadRooms();
+        }
+
         async function loadRooms() {
             const floor = document.getElementById('floor-select').value;
-            let data = [];
+            let baseData = [];
 
+            // 1. Lấy dữ liệu thô theo tầng trước
             if (_supabase) {
                 try {
                     let query = _supabase.from('rooms').select('*').order('id');
-                    if(user.role === 'user') {
-                        query = query.eq('id', user.roomId);
-                    } else if(floor != 0) {
-                        query = query.eq('floor', floor);
-                    }
+                    if(user.role === 'user') { query = query.eq('id', user.roomId); } 
+                    else if(floor != 0) { query = query.eq('floor', floor); }
                     let { data: sbData, error } = await query;
-                    if(!error && sbData && sbData.length > 0) {
-                        data = sbData;
-                    } else {
-                        data = getFilteredMockRooms(floor);
-                    }
-                } catch(e) {
-                    data = getFilteredMockRooms(floor);
-                }
+                    if(!error && sbData && sbData.length > 0) { baseData = sbData; } 
+                    else { baseData = getFilteredMockRooms(floor); }
+                } catch(e) { baseData = getFilteredMockRooms(floor); }
             } else {
-                data = getFilteredMockRooms(floor);
+                baseData = getFilteredMockRooms(floor);
             }
             
-            roomsData = data;
-            
-            if(user.role === 'admin' && floor == 0) {
-                updateDashboardStats(mockRooms);
-            } else if(user.role === 'admin') {
-                updateDashboardStats(roomsData);
+            // 2. Cập nhật các con số đếm tĩnh trên thanh thống kê (không đổi số lượng tổng khi bấm lọc)
+            if(user.role === 'admin') {
+                updateDashboardStats(floor == 0 ? mockRooms : getFilteredMockRooms(floor));
             }
 
+            // 3. ĐH THÊM: Thực hiện lọc nâng cao nếu người dùng click chọn 1 trạng thái cụ thể
+            let finalData = baseData;
+            if (user.role === 'admin' && currentStatusFilter !== 'Tất cả') {
+                finalData = baseData.filter(r => r.status === currentStatusFilter);
+            }
+            
+            roomsData = finalData;
+
+            // 4. Đổ dữ liệu ra giao diện Grid phòng phẳng
             const container = document.getElementById('room-grid');
             container.innerHTML = "";
             
-            data.forEach(r => {
+            finalData.forEach(r => {
                 const statusClass = r.status === 'Trống' ? 'status-trong' : (r.status === 'Đang thuê' ? 'status-thue' : 'status-baotri');
                 
                 const div = document.createElement('div');
@@ -376,15 +383,13 @@
         }
 
         function getFilteredMockRooms(floor) {
-            if(user.role === 'user') {
-                return mockRooms.filter(r => r.id == user.roomId);
-            }
+            if(user.role === 'user') { return mockRooms.filter(r => r.id == user.roomId); }
             if(floor == 0) return mockRooms;
             return mockRooms.filter(r => r.floor == floor);
         }
 
         async function openRoom(id) {
-            const r = roomsData.find(x => x.id == id);
+            const r = mockRooms.find(x => x.id == id); // Đọc trực tiếp từ bộ nhớ gốc
             if(!r) return;
 
             const isAdmin = user.role === 'admin';
@@ -416,11 +421,7 @@
             document.getElementById('res-startdate').disabled = !isAdmin;
             document.getElementById('res-note').disabled = !isAdmin;
             
-            if (isAdmin) {
-                saveBtn.classList.remove('hidden');
-            } else {
-                saveBtn.classList.add('hidden');
-            }
+            if (isAdmin) { saveBtn.classList.remove('hidden'); } else { saveBtn.classList.add('hidden'); }
 
             if (r.status === 'Đang thuê') {
                 formWrapper.classList.remove('hidden');
@@ -430,25 +431,13 @@
                 document.getElementById('res-phone').value = r.resident?.phone || "";
                 document.getElementById('res-startdate').value = r.resident?.start_date || "";
                 document.getElementById('res-note').value = r.resident?.note || "";
-                
-                if (_supabase) {
-                    try {
-                        let { data: res } = await _supabase.from('residents').select('*').eq('room_id', id).maybeSingle();
-                        if(res) {
-                            document.getElementById('res-fullname').value = res.fullname || "";
-                            document.getElementById('res-phone').value = res.phone || "";
-                            document.getElementById('res-startdate').value = res.start_date || "";
-                            document.getElementById('res-note').value = res.history || "";
-                        }
-                    } catch(e){}
-                }
             } else {
                 formWrapper.classList.add('hidden');
                 emptyMsg.classList.remove('hidden');
                 if (r.status === 'Bảo trì') {
                     emptyMsg.innerHTML = `<span style="color:var(--status-baotri); font-weight:700;"><i class="fa-solid fa-screwdriver-wrench"></i> ĐANG BẢO TRÌ</span><br><span style="font-size:13px; display:inline-block; margin-top:6px;">Phòng đang được sửa chữa nâng cấp thiết bị, không có cư dân lưu trú.</span>`;
                 } else {
-                    emptyMsg.innerHTML = `<span style="color:var(--status-trong); font-weight:700;"><i class="fa-solid fa-circle-check"></i> PHÒNG TRỐNG SẴN SÀNG</span><br><span style="font-size:13px; display:inline-block; margin-top:6px;">${isAdmin ? 'Hãy chuyển trạng thái phòng sang <b>"Đang thuê"</b> để bắt đầu điền thông tin cư dân mới.' : 'Phòng trống, hiện chưa gán cư dân cư trú.'}</span>`;
+                    emptyMsg.innerHTML = `<span style="color:var(--status-trong); font-weight:700;"><i class="fa-solid fa-circle-check"></i> PHÒNG TRỐNG SẴN SÀNG</span><br><span style="font-size:13px; display:inline-block; margin-top:6px;">Hãy chuyển trạng thái phòng sang <b>"Đang thuê"</b> để bắt đầu điền thông tin cư dân mới.</span>`;
                 }
             }
 
@@ -457,14 +446,11 @@
             if(r.furniture && Array.isArray(r.furniture)) {
                 r.furniture.forEach((f, index) => {
                     const isGood = f.status === 'Tốt';
-                    let actionButtonsHtml = "";
-                    if (isAdmin) {
-                        actionButtonsHtml = `
+                    let actionButtonsHtml = isAdmin ? `
                         <div class="furn-actions">
                             <button onclick="updateFurniture(${id}, ${index}, 'Hỏng')"><i class="fa-solid fa-circle-exclamation" style="color:#ef4444"></i> Hỏng</button>
                             <button onclick="updateFurniture(${id}, ${index}, 'Tốt')"><i class="fa-solid fa-check" style="color:#10b981"></i> Sửa xong</button>
-                        </div>`;
-                    }
+                        </div>` : "";
 
                     furnDiv.innerHTML += `
                         <div style="padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.04)">
@@ -480,39 +466,24 @@
         }
 
         async function changeRoomStatus() {
-            if (user.role !== 'admin') {
-                alert("An toàn: Bạn không có quyền quản trị để thay đổi trạng thái phòng!");
-                return;
-            }
+            if (user.role !== 'admin') return;
 
             const selectEl = document.getElementById('m-status-select');
             const roomId = selectEl.getAttribute('data-room-id');
             const newStatus = selectEl.value;
 
-            const r = roomsData.find(x => x.id == roomId);
-            if(!r) return;
-            r.status = newStatus;
-
             const mockR = mockRooms.find(x => x.id == roomId);
-            if(mockR) mockR.status = newStatus;
+            if(!mockR) return;
+            mockR.status = newStatus;
 
-            if (newStatus === 'Đang thuê' && (!r.resident || !r.resident.fullname)) {
-                r.resident = {
-                    fullname: "Nguyễn Văn Anh",
-                    phone: "0912.345.678",
-                    start_date: "01/01/2026",
-                    note: "Cư dân mới dời đến."
-                };
-                if(mockR) mockR.resident = {...r.resident};
+            if (newStatus === 'Đang thuê' && (!mockR.resident || !mockR.resident.fullname)) {
+                mockR.resident = { fullname: "Nguyễn Văn Anh", phone: "0912.345.678", start_date: "01/01/2026", note: "Cư dân mới." };
             }
 
-            // ĐH FIX: Ghi nhận trạng thái phòng mới vào bộ nhớ trình duyệt
             saveMockRoomsToStorage();
 
             if (_supabase) {
-                try {
-                    await _supabase.from('rooms').update({ status: newStatus }).eq('id', roomId);
-                } catch(e){}
+                try { await _supabase.from('rooms').update({ status: newStatus }).eq('id', roomId); } catch(e){}
             }
 
             loadRooms();
@@ -520,42 +491,27 @@
         }
 
         async function saveResidentInfo() {
-            if (user.role !== 'admin') {
-                alert("An toàn: Bạn không có quyền quản trị để thay đổi dữ liệu cư dân!");
-                return;
-            }
+            if (user.role !== 'admin') return;
 
             const selectEl = document.getElementById('m-status-select');
             const roomId = selectEl.getAttribute('data-room-id');
-            const r = roomsData.find(x => x.id == roomId);
-            if(!r) return;
+            const mockR = mockRooms.find(x => x.id == roomId);
+            if(!mockR) return;
 
             const name = document.getElementById('res-fullname').value.trim();
             const phone = document.getElementById('res-phone').value.trim();
             const start_date = document.getElementById('res-startdate').value.trim();
             const note = document.getElementById('res-note').value.trim();
 
-            if (!name) {
-                alert("Vui lòng điền Họ tên cư dân trước khi lưu!");
-                return;
-            }
+            if (!name) { alert("Vui lòng điền Họ tên cư dân trước khi lưu!"); return; }
 
-            r.resident = { fullname: name, phone: phone, start_date: start_date, note: note };
-
-            const mockR = mockRooms.find(x => x.id == roomId);
-            if(mockR) mockR.resident = {...r.resident};
-
-            // ĐH FIX: Đồng bộ thông tin cư dân vừa chỉnh sửa thành công vào bộ nhớ trình duyệt
+            mockR.resident = { fullname: name, phone: phone, start_date: start_date, note: note };
             saveMockRoomsToStorage();
 
             if (_supabase) {
                 try {
                     await _supabase.from('residents').upsert({
-                        room_id: parseInt(roomId),
-                        fullname: name,
-                        phone: phone,
-                        start_date: start_date,
-                        history: note
+                        room_id: parseInt(roomId), fullname: name, phone: phone, start_date: start_date, history: note
                     }, { onConflict: 'room_id' });
                 } catch(e){}
             }
@@ -566,8 +522,8 @@
 
         async function toggleSmart(type) {
             const id = document.getElementById('m-room-id').innerText.replace('Quản Lý Chi Tiết - Phòng ', '');
-            const r = roomsData.find(x => x.id == id);
-            if(!r) return;
+            const mockR = mockRooms.find(x => x.id == id);
+            if(!mockR) return;
 
             const isLight = type === 'light';
             const field = isLight ? 'light_status' : 'air_status';
@@ -575,18 +531,12 @@
             const txtEl = document.getElementById(isLight ? 'txt-light-status' : 'txt-air-status');
             
             const newVal = switchEl.checked;
-            r[field] = newVal;
-            
-            const mockR = mockRooms.find(x => x.id == id);
-            if(mockR) mockR[field] = newVal;
+            mockR[field] = newVal;
 
-            // ĐH FIX: Đồng bộ bật/tắt thiết bị SmartHome vào bộ nhớ trình duyệt
             saveMockRoomsToStorage();
 
             if (_supabase) {
-                try {
-                    await _supabase.from('rooms').update({ [field]: newVal }).eq('id', id);
-                } catch(e){}
+                try { await _supabase.from('rooms').update({ [field]: newVal }).eq('id', id); } catch(e){}
             }
             
             txtEl.innerText = newVal ? "Đang bật" : "Đang tắt";
@@ -596,33 +546,23 @@
 
         async function updateFurniture(roomId, furnIndex, newStatus) {
             if (user.role !== 'admin') return;
-
-            const r = roomsData.find(x => x.id == roomId);
-            if(!r) return;
-
-            r.furniture[furnIndex].status = newStatus;
             const mockR = mockRooms.find(x => x.id == roomId);
-            if(mockR) mockR.furniture = r.furniture;
+            if(!mockR) return;
 
-            // ĐH FIX: Đồng bộ trạng thái thiết bị nội thất vào bộ nhớ trình duyệt
+            mockR.furniture[furnIndex].status = newStatus;
             saveMockRoomsToStorage();
 
             if (_supabase) {
-                try {
-                    await _supabase.from('rooms').update({ furniture: r.furniture }).eq('id', roomId);
-                } catch(e){}
+                try { await _supabase.from('rooms').update({ furniture: mockR.furniture }).eq('id', roomId); } catch(e){}
             }
             openRoom(roomId);
         }
 
         async function loadBillingData() {
             let data = [];
-
             if (_supabase) {
                 try {
-                    let query = _supabase.from('bills').select('*').order('id', { ascending: false });
-                    if(user.role === 'user') query = query.eq('room_id', user.roomId);
-                    let { data: sbData, error } = await query;
+                    let { data: sbData, error } = await _supabase.from('bills').select('*').order('id', { ascending: false });
                     if(!error && sbData) data = sbData;
                 } catch(e){}
             }
@@ -631,9 +571,7 @@
                 let roomsToBill = user.role === 'user' ? [parseInt(user.roomId)] : [101, 105, 202, 406, 708, 1002];
                 roomsToBill.forEach((rid, index) => {
                     data.push({
-                        id: index,
-                        room_id: rid,
-                        month_year: "06/2026",
+                        id: index, room_id: rid, month_year: "06/2026",
                         elec_kwh: Math.floor(Math.random() * 140) + 70,
                         total_amount: Math.floor(Math.random() * 1200000) + 3200000,
                         is_paid: Math.random() > 0.3
