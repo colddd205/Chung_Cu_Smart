@@ -1,0 +1,23 @@
+name: He thong tu dong chot hoa don hang thang
+
+# 1. Thoi gian chay
+on:
+  schedule:
+    # Chay vao luc 00:00 ngay 01 hang thang (Gio UTC)
+    # 00:00 UTC tuong duong 07:00 gio Viet Nam
+    - cron: '0 0 1 * *'
+  
+  # Cho phep bam nut chay thu nghiem thu cong
+  workflow_dispatch:
+
+jobs:
+  chot-so-va-tinh-tien:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Goi API Database de xu ly nghiep vu
+        run: |
+          curl -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/auto_billing_cycle" \
+          -H "Content-Type: application/json" \
+          -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
