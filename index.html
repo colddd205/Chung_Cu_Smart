@@ -3,71 +3,777 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Chung cư Mini Smart</title>
+    <title>Hệ Thống Quản Lý Chung Cư Mini Smart</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        /* --- PREMIUM MODERN UI DESIGN SYSTEM --- */
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            
+            --primary: #0ea5e9;
+            --primary-glow: rgba(14, 165, 233, 0.15);
+            
+            --status-trong: #10b981;
+            --status-trong-bg: rgba(16, 185, 129, 0.12);
+            --status-thue: #3b82f6;
+            --status-thue-bg: rgba(59, 130, 246, 0.12);
+            --status-baotri: #f59e0b;
+            --status-baotri-bg: rgba(245, 158, 11, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before, body::after {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(14, 165, 233, 0.12) 0%, transparent 70%);
+            z-index: -1;
+        }
+        body::before { top: -10%; left: -10%; }
+        body::after { bottom: -10%; right: -10%; }
+
+        .hidden { display: none !important; }
+
+        /* --- LOGIN CARD --- */
+        #login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(16px);
+            padding: 40px;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .login-card h2 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .login-card p {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 32px;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 18px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px 16px 14px 48px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px var(--primary-glow);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(90deg, #0ea5e9, #2563eb);
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
+        }
+
+        /* --- DASHBOARD WORKSPACE --- */
+        #main-ui {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(12px);
+            padding: 16px 32px;
+            border-radius: 18px;
+            margin-bottom: 30px;
+        }
+
+        header h1 { font-size: 20px; font-weight: 600; }
+
+        .logout-btn {
+            padding: 8px 16px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 8px;
+            color: #ef4444;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover { background: #ef4444; color: #fff; }
+
+        .controls-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .tabs {
+            display: flex;
+            background: rgba(15, 23, 42, 0.4);
+            padding: 6px;
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-btn.active { background: var(--primary); color: #fff; }
+
+        .filter-select {
+            padding: 10px 16px;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--card-border);
+            color: #fff;
+            border-radius: 10px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        /* Grid Sơ Đồ Phòng */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 16px;
+        }
+
+        .room-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .room-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(255,255,255,0.2);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.2);
+        }
+
+        .room-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px;
+        }
+        .room-card.status-trong::before { background: var(--status-trong); }
+        .room-card.status-thue::before { background: var(--status-thue); }
+        .room-card.status-baotri::before { background: var(--status-baotri); }
+
+        .room-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+        .room-type { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+
+        .status-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
+        .status-trong .status-badge { color: var(--status-trong); background: var(--status-trong-bg); }
+        .status-thue .status-badge { color: var(--status-thue); background: var(--status-thue-bg); }
+        .status-baotri .status-badge { color: var(--status-baotri); background: var(--status-baotri-bg); }
+
+        .room-indicators {
+            display: flex; justify-content: center; gap: 10px; margin-top: 14px; font-size: 13px; color: var(--text-muted);
+        }
+        .room-indicators i.active { color: #f59e0b; filter: drop-shadow(0 0 4px #f59e0b); }
+
+        /* --- HIGH-END MODAL DIALOG --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000; padding: 20px; transition: all 0.3s;
+        }
+
+        .modal-card {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            width: 100%; max-width: 850px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            animation: modalSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes modalSlideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            padding: 24px 32px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-header h2 { font-size: 20px; font-weight: 700; }
+
+        .close-btn {
+            background: rgba(255,255,255,0.05); border: none; width: 36px; height: 36px;
+            border-radius: 50%; color: var(--text-muted); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 20px;
+        }
+        .close-btn:hover { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+        .modal-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 32px;
+        }
+
+        @media (max-width: 768px) { .modal-grid { grid-template-columns: 1fr; } }
+
+        .modal-section {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255,255,255,0.02);
+            border-radius: 16px; padding: 20px;
+        }
+        .modal-section h3 {
+            font-size: 14px; font-weight: 600; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .modal-section h3 i { color: var(--primary); }
+
+        .iot-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .iot-row:last-child { border: none; }
+        .iot-info p { font-size: 14px; font-weight: 500; }
+        .iot-info span { font-size: 12px; color: var(--text-muted); }
+
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #475569; transition: .3s; border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+            background-color: white; transition: .3s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        .furn-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; padding: 6px 0; }
+        .furn-status { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+        .furn-status.good { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+        .furn-status.broken { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+        .furn-actions { display: flex; gap: 6px; margin-top: 6px; margin-bottom: 10px; }
+        .furn-actions button {
+            padding: 4px 10px; font-size: 11px; border: none; border-radius: 4px;
+            cursor: pointer; background: rgba(255,255,255,0.05); color: #fff;
+            display: flex; align-items: center; gap: 4px; transition: all 0.2s;
+        }
+        .furn-actions button:hover { background: rgba(255,255,255,0.12); }
+
+        .billing-table {
+            width: 100%; border-collapse: collapse; background: var(--card-bg);
+            border: 1px solid var(--card-border); border-radius: 12px; overflow: hidden;
+        }
+        .billing-table th, .billing-table td { padding: 14px 20px; text-align: left; }
+        .billing-table th { background: rgba(15, 23, 42, 0.6); color: var(--text-muted); font-size: 13px; }
+        .billing-table tr { border-bottom: 1px solid rgba(255,255,255,0.05); }
+    </style>
 </head>
 <body>
-    <div class="ocean"><div class="wave"></div><div class="wave"></div></div>
 
-    <div id="app">
-        <div id="login-box" class="card">
+    <div id="login-container">
+        <div class="login-card">
             <h2>HỆ THỐNG QUẢN LÝ</h2>
-            <input type="text" id="user-input" placeholder="Tên đăng nhập (Admin/Phòng)">
-            <input type="password" id="pass-input" placeholder="Mật khẩu (123456)">
-            <button onclick="auth()">Đăng Nhập</button>
-        </div>
-
-        <div id="main-ui" class="hidden">
-            <header>
-                <h1 id="user-tag">Xin chào</h1>
-                <button onclick="location.reload()">Đăng xuất</button>
-            </header>
-
-            <nav>
-                <button onclick="showTab('rooms')">Sơ đồ phòng</button>
-                <button onclick="showTab('billing')">Hóa đơn & Nợ</button>
-            </nav>
-
-            <section id="tab-rooms">
-                <div class="floor-nav">
-                    <select id="floor-select" onchange="loadRooms()">
-                        <option value="0">Tất cả tầng</option>
-                        </select>
-                </div>
-                <div id="room-grid" class="grid"></div>
-            </section>
-
-            <section id="tab-billing" class="hidden">
-                <div id="billing-list"></div>
-            </section>
+            <p>Chung cư Mini Smart 10 Tầng</p>
+            
+            <div class="input-group">
+                <i class="fa-solid fa-user"></i>
+                <input type="text" id="user-input" placeholder="Tên đăng nhập (admin hoặc số phòng)">
+            </div>
+            
+            <div class="input-group">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" id="pass-input" placeholder="Mật khẩu (Mặc định: 123456)">
+            </div>
+            
+            <button class="login-btn" onclick="auth()">Đăng Nhập Hệ Thống</button>
         </div>
     </div>
 
-    <div id="modal" class="modal hidden">
-        <div class="modal-content card">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h2 id="m-room-id">Phòng</h2>
-            <div class="modal-body">
-                <div class="col">
-                    <h3>Smart Home</h3>
-                    <p>Số điện: <span id="m-elec">0</span> kWh</p>
-                    <button id="btn-light" onclick="toggleSmart('light')">Đèn: Tắt</button>
-                    <button id="btn-air" onclick="toggleSmart('air')">Điều hòa: Tắt</button>
+    <div id="main-ui" class="hidden">
+        <header>
+            <h1 id="user-tag"><i class="fa-solid fa-building-shield"></i> Xin chào Ban Quản Lý</h1>
+            <button class="logout-btn" onclick="location.reload()"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</button>
+        </header>
+
+        <div class="controls-bar">
+            <div class="tabs">
+                <button id="btn-tab-rooms" class="tab-btn active" onclick="showTab('rooms')"><i class="fa-solid fa-border-all"></i> Sơ đồ phòng</button>
+                <button id="btn-tab-billing" class="tab-btn" onclick="showTab('billing')"><i class="fa-solid fa-file-invoice-dollar"></i> Hóa đơn & Nợ</button>
+            </div>
+            
+            <div id="floor-filter-wrapper">
+                <select id="floor-select" class="filter-select" onchange="loadRooms()">
+                    <option value="0">🏢 Tất cả các tầng</option>
+                </select>
+            </div>
+        </div>
+
+        <section id="tab-rooms">
+            <div id="room-grid" class="grid"></div>
+        </section>
+
+        <section id="tab-billing" class="hidden">
+            <table class="billing-table">
+                <thead>
+                    <tr>
+                        <th>Phòng</th>
+                        <th>Kỳ Hóa Đơn</th>
+                        <th>Số điện tiêu thụ</th>
+                        <th>Tổng tiền (Phòng + Điện)</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody id="billing-list"></tbody>
+            </table>
+        </section>
+    </div>
+
+    <div id="modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="m-room-id">Thông Tin Chi Tiết Phòng</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            
+            <div class="modal-grid">
+                <div class="modal-section">
+                    <h3><i class="fa-solid fa-house-laptop"></i> Smart Home</h3>
+                    
+                    <div class="iot-row">
+                        <div class="iot-info">
+                            <p>Hệ thống chiếu sáng</p>
+                            <span id="txt-light-status">Đang tắt</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="switch-light" onchange="toggleSmart('light')">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="iot-row">
+                        <div class="iot-info">
+                            <p>Điều hòa máy lạnh</p>
+                            <span id="txt-air-status">Đang tắt</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="switch-air" onchange="toggleSmart('air')">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="iot-row" style="margin-top: 10px;">
+                        <div class="iot-info">
+                            <p>Công tơ điện</p>
+                            <span style="color: #f59e0b; font-weight: 600;"><span id="m-elec">0</span> kWh</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="col">
-                    <h3>Cư dân & Lịch sử</h3>
-                    <p id="m-tenant">Khách: </p>
-                    <p id="m-history" style="font-size: 12px; color: gray;"></p>
+
+                <div class="modal-section">
+                    <h3><i class="fa-solid fa-users"></i> Cư Dân</h3>
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <p id="m-tenant" style="font-size: 15px; font-weight: 600; color: #fff;">Chưa có dữ liệu</p>
+                        <p id="m-history" style="font-size: 13px; color: var(--text-muted); line-height: 1.5;"></p>
+                    </div>
                 </div>
-                <div class="col">
-                    <h3>Đồ đạc</h3>
+
+                <div class="modal-section">
+                    <h3><i class="fa-solid fa-couch"></i> Thiết bị nội thất</h3>
                     <div id="m-furniture"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script>
+        // --- THIẾT LẬP KẾT NỐI DATABASE SUPABASE ---
+        const SB_URL = "URL_CỦA_BẠN";
+        const SB_KEY = "KEY_CỦA_BẠN";
+        
+        let _supabase = null;
+        if (SB_URL !== "URL_CỦA_BẠN" && SB_URL.startsWith("http")) {
+            _supabase = supabase.createClient(SB_URL, SB_KEY);
+        }
+
+        let user = null;
+        let roomsData = [];
+        let mockRooms = []; // Mảng chứa 100 phòng chạy thử offline
+
+        // Hàm tự sinh 100 phòng mô phỏng sang xịn mịn (Offline Mode)
+        function generateMockRooms() {
+            let list = [];
+            for(let f=1; f<=10; f++) {
+                for(let r=1; r<=10; r++) {
+                    let id = f * 100 + r;
+                    let type = r <= 5 ? 'Phòng Đơn' : (r <= 8 ? 'Phòng Đôi' : 'Phòng VIP');
+                    let status = Math.random() > 0.4 ? 'Đang thuê' : (Math.random() > 0.5 ? 'Trống' : 'Bảo trì');
+                    list.push({
+                        id: id, floor: f, type: type, status: status,
+                        light_status: Math.random() > 0.5,
+                        air_status: Math.random() > 0.5,
+                        electricity_usage: Math.floor(Math.random() * 250) + 60,
+                        furniture: [
+                            { name: "Giường ngủ cao cấp", status: "Tốt" },
+                            { name: "Tủ quần áo gỗ", status: "Tốt" },
+                            { name: "Bình nóng lạnh", status: Math.random() > 0.85 ? "Hỏng" : "Tốt" }
+                        ]
+                    });
+                }
+            }
+            return list;
+        }
+
+        // Khởi tạo dữ liệu mô phỏng ngay khi tải trang
+        mockRooms = generateMockRooms();
+
+        // 1. ĐĂNG NHẬP VÀ PHÂN QUYỀN TRỰC TIẾP
+        async function auth() {
+            const input = document.getElementById('user-input').value.trim().toLowerCase();
+            const pass = document.getElementById('pass-input').value;
+
+            if(pass !== "123456") {
+                alert("Mật khẩu không chính xác!");
+                return;
+            }
+
+            if(input === "admin") {
+                user = { role: 'admin' };
+            } else {
+                const roomId = input.replace('p', '');
+                user = { role: 'user', roomId: roomId };
+                document.getElementById('floor-filter-wrapper').classList.add('hidden');
+            }
+
+            document.getElementById('login-container').classList.add('hidden');
+            document.getElementById('main-ui').classList.remove('hidden');
+            document.getElementById('user-tag').innerHTML = `<i class="fa-solid fa-circle-user" style="color:var(--primary)"></i> Tài khoản: ${input.toUpperCase()}`;
+            
+            initFloorSelect();
+            loadRooms();
+            loadBillingData();
+        }
+
+        function initFloorSelect() {
+            const s = document.getElementById('floor-select');
+            s.innerHTML = '<option value="0">🏢 Tất cả các tầng</option>';
+            for(let i=1; i<=10; i++) {
+                s.innerHTML += `<option value="${i}">Tầng ${i}</option>`;
+            }
+        }
+
+        // 2. TẢI DANH SÁCH SƠ ĐỒ PHÒNG (ƯU TIÊN SUPABASE -> CHUYỂN MOCK NẾU CHƯA KẾT NỐI)
+        async function loadRooms() {
+            const floor = document.getElementById('floor-select').value;
+            let data = [];
+
+            if (_supabase) {
+                try {
+                    let query = _supabase.from('rooms').select('*').order('id');
+                    if(user.role === 'user') {
+                        query = query.eq('id', user.roomId);
+                    } else if(floor != 0) {
+                        query = query.eq('floor', floor);
+                    }
+                    let { data: sbData, error } = await query;
+                    if(!error && sbData && sbData.length > 0) {
+                        data = sbData;
+                    } else {
+                        data = getFilteredMockRooms(floor);
+                    }
+                } catch(e) {
+                    data = getFilteredMockRooms(floor);
+                }
+            } else {
+                data = getFilteredMockRooms(floor);
+            }
+            
+            roomsData = data;
+            const container = document.getElementById('room-grid');
+            container.innerHTML = "";
+            
+            data.forEach(r => {
+                const isTrong = r.status === 'Trống';
+                const isThue = r.status === 'Đang thuê';
+                const statusClass = isTrong ? 'status-trong' : (isThue ? 'status-thue' : 'status-baotri');
+                
+                const div = document.createElement('div');
+                div.className = `room-card ${statusClass}`;
+                div.innerHTML = `
+                    <h3>P.${r.id}</h3>
+                    <div class="room-type">${r.type}</div>
+                    <span class="status-badge">${r.status}</span>
+                    <div class="room-indicators">
+                        <i class="fa-solid fa-lightbulb ${r.light_status ? 'active' : ''}"></i>
+                        <i class="fa-solid fa-snowflake ${r.air_status ? 'active' : ''}"></i>
+                    </div>
+                `;
+                div.onclick = () => openRoom(r.id);
+                container.appendChild(div);
+            });
+        }
+
+        function getFilteredMockRooms(floor) {
+            if(user.role === 'user') {
+                return mockRooms.filter(r => r.id == user.roomId);
+            }
+            if(floor == 0) return mockRooms;
+            return mockRooms.filter(r => r.floor == floor);
+        }
+
+        // 3. XEM CHI TIẾT HỘP THOẠI PHÒNG (BẤM LÀ HIỆN 100%)
+        async function openRoom(id) {
+            const r = roomsData.find(x => x.id == id);
+            if(!r) return;
+
+            document.getElementById('m-room-id').innerText = "Quản Lý Chi Tiết - Phòng " + id;
+            document.getElementById('m-elec').innerText = r.electricity_usage;
+            
+            document.getElementById('switch-light').checked = r.light_status;
+            document.getElementById('txt-light-status').innerText = r.light_status ? "Đang bật" : "Đang tắt";
+            document.getElementById('txt-light-status').style.color = r.light_status ? "#0ea5e9" : "#94a3b8";
+
+            document.getElementById('switch-air').checked = r.air_status;
+            document.getElementById('txt-air-status').innerText = r.air_status ? "Đang bật" : "Đang tắt";
+            document.getElementById('txt-air-status').style.color = r.air_status ? "#0ea5e9" : "#94a3b8";
+            
+            // Xử lý thông tin cư dân
+            let tenantName = "Phòng hiện đang trống";
+            let tenantHistory = "";
+            
+            if (r.status === 'Đang thuê') {
+                tenantName = "Họ tên: Nguyễn Văn Anh<br>SĐT: 0912.345.678";
+                tenantHistory = "📅 Ngày dời đến: 01/01/2026<br>📝 Ghi chú: Sinh viên CNTT, ngoan ngoãn, đóng tiền đúng hạn.";
+                
+                if (_supabase) {
+                    try {
+                        let { data: res } = await _supabase.from('residents').select('*').eq('room_id', id).maybeSingle();
+                        if(res) {
+                            tenantName = `Họ tên: ${res.fullname}<br>SĐT: ${res.phone}`;
+                            tenantHistory = `📅 Ngày dời đến: ${res.start_date}<br>📝 Lưu ý: ${res.history || 'Không'}`;
+                        }
+                    } catch(e){}
+                }
+            }
+            
+            document.getElementById('m-tenant').innerHTML = tenantName;
+            document.getElementById('m-history').innerHTML = tenantHistory;
+
+            // Đổ dữ liệu thiết bị nội thất lên giao diện
+            const furnDiv = document.getElementById('m-furniture');
+            furnDiv.innerHTML = "";
+            if(r.furniture && Array.isArray(r.furniture)) {
+                r.furniture.forEach((f, index) => {
+                    const isGood = f.status === 'Tốt';
+                    furnDiv.innerHTML += `
+                        <div style="padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05)">
+                            <div class="furn-item">
+                                <span>${f.name}</span>
+                                <span class="furn-status ${isGood ? 'good' : 'broken'}">${f.status}</span>
+                            </div>
+                            <div class="furn-actions">
+                                <button onclick="updateFurniture(${id}, ${index}, 'Hỏng')"><i class="fa-solid fa-circle-exclamation" style="color:#ef4444"></i> Hỏng</button>
+                                <button onclick="updateFurniture(${id}, ${index}, 'Tốt')"><i class="fa-solid fa-check" style="color:#10b981"></i> Sửa xong</button>
+                            </div>
+                        </div>`;
+                });
+            }
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        // 4. ĐIỀU KHIỂN CÔNG TẮC ĐÈN/MÁY LẠNH SMART HOME
+        async function toggleSmart(type) {
+            const id = document.getElementById('m-room-id').innerText.replace('Quản Lý Chi Tiết - Phòng ', '');
+            const r = roomsData.find(x => x.id == id);
+            if(!r) return;
+
+            const isLight = type === 'light';
+            const field = isLight ? 'light_status' : 'air_status';
+            const switchEl = document.getElementById(isLight ? 'switch-light' : 'switch-air');
+            const txtEl = document.getElementById(isLight ? 'txt-light-status' : 'txt-air-status');
+            
+            const newVal = switchEl.checked;
+            r[field] = newVal; // Cập nhật ngay lập tức vào bộ nhớ RAM chạy thử
+
+            if (_supabase) {
+                try {
+                    await _supabase.from('rooms').update({ [field]: newVal }).eq('id', id);
+                } catch(e){}
+            }
+            
+            txtEl.innerText = newVal ? "Đang bật" : "Đang tắt";
+            txtEl.style.color = newVal ? "#0ea5e9" : "#94a3b8";
+            loadRooms(); // Cập nhật lại biểu tượng nhỏ ngoài sơ đồ phòng
+        }
+
+        // 5. CẬP NHẬT TÌNH TRẠNG THIẾT BỊ NỘI THẤT
+        async function updateFurniture(roomId, furnIndex, newStatus) {
+            const r = roomsData.find(x => x.id == roomId);
+            if(!r) return;
+
+            r.furniture[furnIndex].status = newStatus;
+
+            if (_supabase) {
+                try {
+                    await _supabase.from('rooms').update({ furniture: r.furniture }).eq('id', roomId);
+                } catch(e){}
+            }
+            openRoom(roomId);
+        }
+
+        // 6. TẢI DANH SÁCH HÓA ĐƠN TÀI CHÍNH CÔNG NỢ
+        async function loadBillingData() {
+            let data = [];
+
+            if (_supabase) {
+                try {
+                    let query = _supabase.from('bills').select('*').order('id', { ascending: false });
+                    if(user.role === 'user') query = query.eq('room_id', user.roomId);
+                    let { data: sbData, error } = await query;
+                    if(!error && sbData) data = sbData;
+                } catch(e){}
+            }
+            
+            // Nếu không có dữ liệu từ Database, tự động tạo hóa đơn mô phỏng trực quan
+            if(data.length === 0) {
+                let roomsToBill = user.role === 'user' ? [parseInt(user.roomId)] : [101, 105, 202, 406, 708, 1002];
+                roomsToBill.forEach((rid, index) => {
+                    data.push({
+                        id: index,
+                        room_id: rid,
+                        month_year: "06/2026",
+                        elec_kwh: Math.floor(Math.random() * 140) + 70,
+                        total_amount: Math.floor(Math.random() * 1200000) + 3200000,
+                        is_paid: Math.random() > 0.3
+                    });
+                });
+            }
+
+            const tbody = document.getElementById('billing-list');
+            tbody.innerHTML = "";
+            data.forEach(b => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-weight:600">Phòng ${b.room_id}</td>
+                    <td>Tháng ${b.month_year}</td>
+                    <td>${b.elec_kwh} kWh</td>
+                    <td style="color:#10b981; font-weight:600;">${b.total_amount.toLocaleString('vi-VN')} VNĐ</td>
+                    <td>
+                        <span class="status-badge" style="background:${b.is_paid ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)'}; color:${b.is_paid ? '#10b981' : '#ef4444'}">
+                            ${b.is_paid ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+        function showTab(t) {
+            const isRooms = t === 'rooms';
+            document.getElementById('tab-rooms').classList.toggle('hidden', !isRooms);
+            document.getElementById('tab-billing').classList.toggle('hidden', isRooms);
+            document.getElementById('btn-tab-rooms').classList.toggle('active', isRooms);
+            document.getElementById('btn-tab-billing').classList.toggle('active', !isRooms);
+        }
+    </script>
 </body>
 </html>
