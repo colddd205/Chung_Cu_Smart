@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Chung cư Mini Smart</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="ocean"><div class="wave"></div><div class="wave"></div></div>
+
+    <div id="app">
+        <div id="login-box" class="card">
+            <h2>HỆ THỐNG QUẢN LÝ</h2>
+            <input type="text" id="user-input" placeholder="Tên đăng nhập (Admin/Phòng)">
+            <input type="password" id="pass-input" placeholder="Mật khẩu (123456)">
+            <button onclick="auth()">Đăng Nhập</button>
+        </div>
+
+        <div id="main-ui" class="hidden">
+            <header>
+                <h1 id="user-tag">Xin chào</h1>
+                <button onclick="location.reload()">Đăng xuất</button>
+            </header>
+
+            <nav>
+                <button onclick="showTab('rooms')">Sơ đồ phòng</button>
+                <button onclick="showTab('billing')">Hóa đơn & Nợ</button>
+            </nav>
+
+            <section id="tab-rooms">
+                <div class="floor-nav">
+                    <select id="floor-select" onchange="loadRooms()">
+                        <option value="0">Tất cả tầng</option>
+                        </select>
+                </div>
+                <div id="room-grid" class="grid"></div>
+            </section>
+
+            <section id="tab-billing" class="hidden">
+                <div id="billing-list"></div>
+            </section>
+        </div>
+    </div>
+
+    <div id="modal" class="modal hidden">
+        <div class="modal-content card">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 id="m-room-id">Phòng</h2>
+            <div class="modal-body">
+                <div class="col">
+                    <h3>Smart Home</h3>
+                    <p>Số điện: <span id="m-elec">0</span> kWh</p>
+                    <button id="btn-light" onclick="toggleSmart('light')">Đèn: Tắt</button>
+                    <button id="btn-air" onclick="toggleSmart('air')">Điều hòa: Tắt</button>
+                </div>
+                <div class="col">
+                    <h3>Cư dân & Lịch sử</h3>
+                    <p id="m-tenant">Khách: </p>
+                    <p id="m-history" style="font-size: 12px; color: gray;"></p>
+                </div>
+                <div class="col">
+                    <h3>Đồ đạc</h3>
+                    <div id="m-furniture"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
