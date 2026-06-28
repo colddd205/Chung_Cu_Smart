@@ -167,12 +167,25 @@
                         <button id="btn-save-resident" class="save-btn" onclick="saveResidentInfo()">
                             <i class="fa-solid fa-floppy-disk"></i> Lưu Thông Tin
                         </button>
+                        
+                        <button id="btn-admin-invoice" class="save-btn hidden" style="background: #ef4444; margin-top: 10px;" onclick="adminTaoHoaDon()">
+                            <i class="fa-solid fa-file-invoice-dollar"></i> Gửi Yêu Cầu Thanh Toán
+                        </button>
                     </div>
                 </div>
 
                 <div class="modal-section">
                     <h3><i class="fa-solid fa-couch"></i> Thiết bị nội thất</h3>
                     <div id="m-furniture"></div>
+                    
+                    <div id="khu-vuc-thanh-toan" style="display: none; background: #1e293b; padding: 15px; border-radius: 10px; margin-top: 20px; text-align: center;">
+                        <h4 style="color: #38bdf8; margin-bottom: 10px;">Yêu cầu thanh toán</h4>
+                        <p style="color: white; font-size: 14px;">Tổng tiền: <strong id="so-tien-hien-thi" style="color: #f87171; font-size: 18px;">0 VNĐ</strong></p>
+                        
+                        <img id="ma-qr-thanh-toan" src="" alt="Mã QR" style="width: 200px; height: 200px; margin: 10px auto; border-radius: 8px; display: block; background: white; padding: 5px;" />
+                        
+                        <p style="color: #94a3b8; font-size: 12px; margin-top: 5px;">Mở App ngân hàng quét mã để thanh toán</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -182,6 +195,11 @@
         const SB_URL = "URL_CỦA_BẠN";
         const SB_KEY = "KEY_CỦA_BẠN";
         
+        // --- CẤU HÌNH TÀI KHOẢN NGÂN HÀNG NHẬN TIỀN ---
+        const NGAN_HANG = "MB"; // Mã ngân hàng: MB, VCB, TCB, CTG, BIDV...
+        const SO_TAI_KHOAN = "251229"; // Điền số tài khoản thật của bạn vào đây
+        const TEN_TAI_KHOAN = "DAM THE TUYEN"; // Điền tên chủ tài khoản viết hoa không dấu
+        
         let _supabase = null;
         if (SB_URL !== "URL_CỦA_BẠN" && SB_URL.startsWith("http")) {
             _supabase = supabase.createClient(SB_URL, SB_KEY);
@@ -190,8 +208,6 @@
         let user = null;
         let roomsData = [];
         let mockRooms = [];
-        
-        // ĐÃ THÊM: Biến lưu trữ trạng thái lọc hiện hành từ thanh thống kê
         let currentStatusFilter = 'Tất cả';
 
         function generateMockRooms() {
@@ -256,6 +272,26 @@
                 loadRooms();
                 loadBillingData();
             }
+
+            // --- ĐĂNG KÝ LẮNG NGHE REALTIME SUPABASE CHO BẢNG HÓA ĐƠN ---
+            if (_supabase) {
+                _supabase
+                    .channel('public:bills')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'bills' }, (payload) => {
+                        console.log('Có thay đổi hóa đơn Realtime!');
+                        loadBillingData(); // Tải lại bảng danh sách hóa đơn chung
+                        
+                        // Nếu modal chi tiết phòng đang mở, cập nhật ngay lập tức mã QR mới
+                        const selectEl = document.getElementById('m-status-select');
+                        if (selectEl) {
+                            const currentRoomId = selectEl.getAttribute('data-room-id');
+                            if (currentRoomId) {
+                                taiHoaDonKhachThue(currentRoomId);
+                            }
+                        }
+                    })
+                    .subscribe();
+            }
         });
 
         async function auth() {
@@ -312,18 +348,14 @@
             document.getElementById('stat-maintenance').innerText = maintenance;
         }
 
-        // ĐH THÊM: Hàm xử lý kích hoạt khi ấn vào thẻ thống kê dữ liệu
         function filterByStatus(status, element) {
             if (user.role !== 'admin') return; 
             
             currentStatusFilter = status;
-            
-            // Đồng bộ hiệu ứng chọn viền sáng cho Card được click
             const cards = document.querySelectorAll('#stats-summary-bar .stat-card');
             cards.forEach(c => c.classList.remove('active'));
             element.classList.add('active');
             
-            // Đưa người dùng về màn hình Tab sơ đồ phòng để xem kết quả lọc
             showTab('rooms');
             loadRooms();
         }
@@ -332,7 +364,6 @@
             const floor = document.getElementById('floor-select').value;
             let baseData = [];
 
-            // 1. Lấy dữ liệu thô theo tầng trước
             if (_supabase) {
                 try {
                     let query = _supabase.from('rooms').select('*').order('id');
@@ -346,12 +377,10 @@
                 baseData = getFilteredMockRooms(floor);
             }
             
-            // 2. Cập nhật các con số đếm tĩnh trên thanh thống kê (không đổi số lượng tổng khi bấm lọc)
             if(user.role === 'admin') {
                 updateDashboardStats(floor == 0 ? mockRooms : getFilteredMockRooms(floor));
             }
 
-            // 3. ĐH THÊM: Thực hiện lọc nâng cao nếu người dùng click chọn 1 trạng thái cụ thể
             let finalData = baseData;
             if (user.role === 'admin' && currentStatusFilter !== 'Tất cả') {
                 finalData = baseData.filter(r => r.status === currentStatusFilter);
@@ -359,7 +388,6 @@
             
             roomsData = finalData;
 
-            // 4. Đổ dữ liệu ra giao diện Grid phòng phẳng
             const container = document.getElementById('room-grid');
             container.innerHTML = "";
             
@@ -389,7 +417,7 @@
         }
 
         async function openRoom(id) {
-            const r = mockRooms.find(x => x.id == id); // Đọc trực tiếp từ bộ nhớ gốc
+            const r = mockRooms.find(x => x.id == id);
             if(!r) return;
 
             const isAdmin = user.role === 'admin';
@@ -415,6 +443,7 @@
             const formWrapper = document.getElementById('resident-form-wrapper');
             const emptyMsg = document.getElementById('resident-empty-msg');
             const saveBtn = document.getElementById('btn-save-resident');
+            const adminInvoiceBtn = document.getElementById('btn-admin-invoice');
             
             document.getElementById('res-fullname').disabled = !isAdmin;
             document.getElementById('res-phone').disabled = !isAdmin;
@@ -422,6 +451,13 @@
             document.getElementById('res-note').disabled = !isAdmin;
             
             if (isAdmin) { saveBtn.classList.remove('hidden'); } else { saveBtn.classList.add('hidden'); }
+
+            // Hiển thị nút bấm gửi yêu cầu thanh toán cho Admin nếu phòng đang hoạt động thuê
+            if (isAdmin && r.status === 'Đang thuê') {
+                adminInvoiceBtn.classList.remove('hidden');
+            } else {
+                adminInvoiceBtn.classList.add('hidden');
+            }
 
             if (r.status === 'Đang thuê') {
                 formWrapper.classList.remove('hidden');
@@ -462,7 +498,90 @@
                         </div>`;
                 });
             }
+
+            // GỌI HÀM KIỂM TRA & HIỂN THỊ HÓA ĐƠN QR CODE CHO PHÒNG NÀY
+            taiHoaDonKhachThue(id);
+
             document.getElementById('modal').classList.remove('hidden');
+        }
+
+        // --- HÀM TẢI HÓA ĐƠN CHƯA THANH TOÁN VÀ TẠO MÃ QR (BƯỚC 2) ---
+        async function taiHoaDonKhachThue(roomId) {
+            const khuVucThanhToan = document.getElementById('khu-vuc-thanh-toan');
+            if (!khuVucThanhToan) return;
+
+            let hoaDonActive = null;
+
+            // Nếu kết nối database Supabase thành công, tìm hóa đơn chưa thanh toán
+            if (_supabase) {
+                try {
+                    const { data: bills, error } = await _supabase
+                        .from('bills')
+                        .select('*')
+                        .eq('room_id', roomId)
+                        .eq('is_paid', false)
+                        .order('id', { ascending: false });
+
+                    if (!error && bills && bills.length > 0) {
+                        hoaDonActive = bills[0];
+                    }
+                } catch (e) {
+                    console.error("Lỗi kết nối Supabase khi tải QR:", e);
+                }
+            }
+
+            // Nếu tìm thấy hóa đơn chưa thanh toán -> Hiện mã QR
+            if (hoaDonActive) {
+                const soTien = hoaDonActive.total_amount;
+                const noiDung = `P${roomId} TT thang ${hoaDonActive.month_year.replace('/', '')}`; 
+                const linkQR = `https://img.vietqr.io/image/${NGAN_HANG}-${SO_TAI_KHOAN}-compact2.png?amount=${soTien}&addInfo=${noiDung}&accountName=${TEN_TAI_KHOAN}`;
+
+                khuVucThanhToan.style.display = 'block';
+                document.getElementById('so-tien-hien-thi').innerText = soTien.toLocaleString('vi-VN') + " VNĐ";
+                document.getElementById('ma-qr-thanh-toan').src = linkQR;
+            } else {
+                // Nếu phòng không nợ tiền hoặc đã thanh toán -> Ẩn khung QR đi
+                khuVucThanhToan.style.display = 'none';
+            }
+        }
+
+        // --- HÀM GỬI HÓA ĐƠN LÊN DATABASE DÀNH CHO ADMIN (BƯỚC 4) ---
+        async function adminTaoHoaDon() {
+            const selectEl = document.getElementById('m-status-select');
+            const roomId = parseInt(selectEl.getAttribute('data-room-id'));
+            if (!roomId) return;
+
+            // Tính toán số tiền (Ví dụ mẫu: 3.500.000 VNĐ)
+            const tongTien = 3500000; 
+            const date = new Date();
+            const thangNam = (date.getMonth() + 1).toString().padStart(2, '0') + '/' + date.getFullYear();
+
+            if (_supabase) {
+                try {
+                    const { data, error } = await _supabase
+                        .from('bills')
+                        .insert([
+                            { 
+                                room_id: roomId, 
+                                month_year: thangNam, 
+                                elec_kwh: 120, // Số điện mẫu
+                                total_amount: tongTien, 
+                                is_paid: false 
+                            }
+                        ]);
+
+                    if (error) throw error;
+                    alert(`Thành công: Đã gửi yêu cầu thanh toán ${tongTien.toLocaleString('vi-VN')} VNĐ cho phòng ${roomId}!`);
+                } catch (e) {
+                    console.error(e);
+                    alert("Lỗi! Không thể đẩy hóa đơn lên hệ thống Supabase.");
+                }
+            } else {
+                alert(`Chế độ giả lập: Đã tạo yêu cầu thanh toán ${tongTien.toLocaleString('vi-VN')} VNĐ cho phòng ${roomId} (Cần kết nối Supabase để lưu dữ liệu thật).`);
+            }
+
+            loadBillingData();      // Tải lại bảng hóa đơn
+            taiHoaDonKhachThue(roomId); // Cập nhật hiển thị QR ngay tại chỗ
         }
 
         async function changeRoomStatus() {
