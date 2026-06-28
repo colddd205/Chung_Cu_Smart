@@ -53,6 +53,6 @@ Triển khai: Đẩy code lên GitHub và kích hoạt GitHub Pages trong phần
 👨‍💻 Tác giả
 Đàm Thế Tuyên
 
-Liên hệ: damthetuyen@gmai.com
+Liên hệ: damthetuyen@gmail.com
 
 Dự án được xây dựng với mục tiêu tối ưu hóa vận hành chung cư thời đại 4.0.
