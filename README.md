@@ -48,7 +48,7 @@ Thay thế vào phần cấu hình Supabase trong file index.html.
 Triển khai: Đẩy code lên GitHub và kích hoạt GitHub Pages trong phần Settings.
 
 📸 Hình ảnh hệ thống
-(Bạn hãy tải các ảnh chụp màn hình từ project của mình lên thư mục assets hoặc images rồi chèn vào đây)
+![alt text](image.png)
 
 👨‍💻 Tác giả
 Đàm Thế Tuyên
