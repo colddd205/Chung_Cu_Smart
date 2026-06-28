@@ -1,0 +1,20 @@
+<script>
+    // Lấy tham số từ URL (ví dụ: ?status=trong)
+    const urlParams = new URLSearchParams(window.location.search);
+    const status = urlParams.get('status');
+
+    // Dùng hàm này để lọc phòng từ Supabase
+    async function loadFilteredRooms(status) {
+        let query = _supabase.from('rooms').select('*');
+        
+        if (status) {
+            query = query.eq('status', status); // Lọc theo trạng thái
+        }
+
+        const { data, error } = await query;
+        // Sau đó render danh sách phòng ra giao diện
+        renderRooms(data);
+    }
+
+    loadFilteredRooms(status);
+</script>
